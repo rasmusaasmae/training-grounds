@@ -72,20 +72,22 @@ export function statusAt(closures: Closure[], now: number): Status {
 export type Stretch = { start: number; end: number; closed: boolean; closure?: Closure }
 
 /**
- * The open and closed stretches covering `from`–`to`. Closures that overlap
- * the range are kept whole; open stretches fill the gaps up to its edges.
+ * The open and closed stretches overlapping `from`–`to`, each whole: an open
+ * stretch runs from the end of one closure to the start of the next, from
+ * -Infinity before the first and to Infinity after the last.
  */
 export function stretchesBetween(closures: Closure[], from: number, to: number): Stretch[] {
   const stretches: Stretch[] = []
-  let openFrom = from
-  for (const closure of closures) {
-    if (closure.end <= from || closure.start >= to) continue
-    if (closure.start > openFrom)
+  let openFrom = -Infinity
+  for (const closure of [...closures, { start: Infinity, end: Infinity, exercises: [] }]) {
+    if (closure.start > openFrom && closure.start > from && openFrom < to) {
       stretches.push({ closed: false, start: openFrom, end: closure.start })
-    stretches.push({ closed: true, start: closure.start, end: closure.end, closure })
+    }
+    if (closure.start < to && closure.end > from) {
+      stretches.push({ closed: true, start: closure.start, end: closure.end, closure })
+    }
     openFrom = closure.end
   }
-  if (openFrom < to) stretches.push({ closed: false, start: openFrom, end: to })
   return stretches
 }
 

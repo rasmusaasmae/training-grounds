@@ -10,9 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { clock, describeStatus, STATUS_COLORS } from '@/lib/format'
+import { clock, describeStatus, endTime, STATUS_COLORS } from '@/lib/format'
 import type { TrainingObject } from '@/lib/grounds'
-import { type Closure, type Status, stretchesBetween, TIME_ZONE } from '@/lib/schedule'
+import {
+  type Closure,
+  type Status,
+  type Stretch,
+  stretchesBetween,
+  TIME_ZONE,
+} from '@/lib/schedule'
 
 export type AreaDetails = {
   object: TrainingObject
@@ -62,18 +68,20 @@ export function AreaDialog({ area, now, open, onOpenChange }: Props) {
 
 function AreaCalendar({ closures }: { closures: Closure[] }) {
   const { ref, hourHeight } = useHourHeight()
-  // Open stretches fill whatever range the calendar shows, and a day either
-  // side, so the edges of the range don't read as changes.
+  // Blocks are drawn a day past either edge of the range, so the edges don't
+  // read as changes; labels use each stretch's real start and end.
   const events = useCallback(
-    async (range: EventSourceFuncInfo) =>
-      stretchesBetween(closures, range.start.valueOf() - DAY, range.end.valueOf() + DAY).map(
-        (s) => ({
-          start: s.start,
-          end: s.end,
-          title: s.closed ? closedTitle(s.closure) : 'Open',
-          color: s.closed ? STATUS_COLORS.closed : STATUS_COLORS.open,
-        }),
-      ),
+    async (range: EventSourceFuncInfo) => {
+      const from = range.start.valueOf() - DAY
+      const to = range.end.valueOf() + DAY
+      return stretchesBetween(closures, from, to).map((s) => ({
+        start: Math.max(s.start, from),
+        end: Math.min(s.end, to),
+        title: s.closed ? closedTitle(s.closure) : 'Open',
+        color: s.closed ? STATUS_COLORS.closed : STATUS_COLORS.open,
+        extendedProps: { stretch: s },
+      }))
+    },
     [closures],
   )
 
@@ -87,16 +95,31 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
           timeGridThreeDay: { type: 'timeGrid', duration: { days: 3 } },
           timeGrid: {
             tableBodyClass: 'area-calendar-body',
-            // No hour labels: each block shows when it starts, which is when
-            // the one before it ends.
+            // No hour labels or titles, as the colour says open or closed:
+            // each block shows when it starts and ends.
             slotHeaderInnerClass: 'invisible w-0 text-xs',
             columnEventInnerClass: 'h-full px-2 py-0.5 text-xs',
-            eventContent: (info) => (
-              <div className="truncate">
-                <span className="font-medium">{info.event.title}</span>
-                {info.isStart && info.event.start && ` · ${clock(info.event.start.valueOf())}`}
-              </div>
-            ),
+            eventContent: (info) => {
+              const stretch: Stretch = info.event.extendedProps.stretch
+              if (info.isStart && stretch.end === Infinity) {
+                return <div className="font-medium">from {clock(stretch.start)}</div>
+              }
+              if (info.isStart) {
+                // Wraps before the end time on narrow columns.
+                return (
+                  <div className="font-medium">
+                    {clock(stretch.start)} –{' '}
+                    <span className="whitespace-nowrap">{endTime(stretch.end, stretch.start)}</span>
+                  </div>
+                )
+              }
+              if (info.isEnd) {
+                return (
+                  <div className="font-medium">until {endTime(stretch.end, stretch.end - 1)}</div>
+                )
+              }
+              return null
+            },
           },
         }}
         buttons={{ timeGridThreeDay: { text: '3 days' }, listWeek: { text: 'List' } }}

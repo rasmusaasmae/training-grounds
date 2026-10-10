@@ -83,7 +83,7 @@ describe('statusAt', () => {
 })
 
 describe('stretchesBetween', () => {
-  test('fills the gaps between closures with open stretches, keeping closures whole', () => {
+  test('fills the gaps between closures with open stretches, keeping every stretch whole', () => {
     const stretches = stretchesBetween(
       closuresFor('LA1', exercises),
       at('2026-10-11T00:00+03:00'),
@@ -96,11 +96,11 @@ describe('stretchesBetween', () => {
     ])
   })
 
-  test('is one open stretch when nothing is scheduled', () => {
+  test('runs open stretches from the last closure, with no end once nothing is scheduled', () => {
     const from = at('2026-10-20T00:00+03:00')
     const to = at('2026-10-23T00:00+03:00')
     expect(stretchesBetween(closuresFor('LA1', exercises), from, to)).toEqual([
-      { closed: false, start: from, end: to },
+      { closed: false, start: at('2026-10-14T17:00+03:00'), end: Infinity },
     ])
   })
 })
