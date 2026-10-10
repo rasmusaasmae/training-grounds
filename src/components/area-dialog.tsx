@@ -127,6 +127,9 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
         },
         // The colour says open or closed and the side says when.
         eventContent: () => null,
+        // Every day's piece of a block is rounded, so each day reads as its
+        // own 00:00–24:00 column, even where a block runs past midnight.
+        columnEventClass: 'mb-px rounded-sm border ring ring-background',
       },
     }),
     [labels],
@@ -152,8 +155,10 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
       eventTimeFormat={TIME_FORMAT}
       allDaySlot={false}
       slotDuration="01:00"
-      // The whole day fills the view, without scrolling.
+      // The whole day fills the view, without scrolling: blocks keep their
+      // true height, so a short one at midnight can't poke past the end.
       expandRows
+      eventMinHeight={0}
       nowIndicator
       noEventsText="Nothing scheduled"
       datesSet={(info) =>
