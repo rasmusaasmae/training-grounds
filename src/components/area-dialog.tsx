@@ -88,11 +88,11 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
           timeGrid: {
             tableBodyClass: 'area-calendar-body',
             // No hour labels: each block shows when it starts, which is when
-            // the one before it ends. The title stays in view while scrolling.
+            // the one before it ends.
             slotHeaderInnerClass: 'invisible w-0 text-xs',
-            columnEventInnerClass: 'h-full px-2 py-1 text-xs',
+            columnEventInnerClass: 'h-full px-2 py-0.5 text-xs',
             eventContent: (info) => (
-              <div className="sticky top-1 truncate">
+              <div className="truncate">
                 <span className="font-medium">{info.event.title}</span>
                 {info.isStart && info.event.start && ` · ${clock(info.event.start.valueOf())}`}
               </div>
