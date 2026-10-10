@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
-import { closuresFor, type Exercise, statusAt, tallinnTime } from '../src/lib/schedule'
+import {
+  closuresFor,
+  type Exercise,
+  statusAt,
+  stretchesBetween,
+  tallinnTime,
+} from '../src/lib/schedule'
 
 const at = (iso: string) => Date.parse(iso)
 
@@ -73,6 +79,29 @@ describe('statusAt', () => {
       kind: 'open',
       closure: undefined,
     })
+  })
+})
+
+describe('stretchesBetween', () => {
+  test('fills the gaps between closures with open stretches, keeping closures whole', () => {
+    const stretches = stretchesBetween(
+      closuresFor('LA1', exercises),
+      at('2026-10-11T00:00+03:00'),
+      at('2026-10-13T00:00+03:00'),
+    )
+    expect(stretches.map((s) => [s.closed, s.start, s.end])).toEqual([
+      [true, at('2026-10-10T08:00+03:00'), at('2026-10-11T17:00+03:00')],
+      [false, at('2026-10-11T17:00+03:00'), at('2026-10-12T08:00+03:00')],
+      [true, at('2026-10-12T08:00+03:00'), at('2026-10-14T17:00+03:00')],
+    ])
+  })
+
+  test('is one open stretch when nothing is scheduled', () => {
+    const from = at('2026-10-20T00:00+03:00')
+    const to = at('2026-10-23T00:00+03:00')
+    expect(stretchesBetween(closuresFor('LA1', exercises), from, to)).toEqual([
+      { closed: false, start: from, end: to },
+    ])
   })
 })
 

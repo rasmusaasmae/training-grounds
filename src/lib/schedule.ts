@@ -68,6 +68,27 @@ export function statusAt(closures: Closure[], now: number): Status {
   return { kind: 'open', closure: next }
 }
 
+/** A stretch of time an object is open, or closed by `closure`. */
+export type Stretch = { start: number; end: number; closed: boolean; closure?: Closure }
+
+/**
+ * The open and closed stretches covering `from`–`to`. Closures that overlap
+ * the range are kept whole; open stretches fill the gaps up to its edges.
+ */
+export function stretchesBetween(closures: Closure[], from: number, to: number): Stretch[] {
+  const stretches: Stretch[] = []
+  let openFrom = from
+  for (const closure of closures) {
+    if (closure.end <= from || closure.start >= to) continue
+    if (closure.start > openFrom)
+      stretches.push({ closed: false, start: openFrom, end: closure.start })
+    stretches.push({ closed: true, start: closure.start, end: closure.end, closure })
+    openFrom = closure.end
+  }
+  if (openFrom < to) stretches.push({ closed: false, start: openFrom, end: to })
+  return stretches
+}
+
 const tallinnParts = new Intl.DateTimeFormat('en-US', {
   timeZone: TIME_ZONE,
   hourCycle: 'h23',

@@ -21,14 +21,12 @@ export function when(t: number, now: number) {
   return `${dateFormat.format(t)} ${clock(t)}`
 }
 
-/** An area's state and until when it holds. */
+/** "Closed until 17:00", "Open until E, 12.10 08:00" or "Open, nothing scheduled". */
 export function describeStatus(status: Status, now: number) {
   const { closure } = status
-  if (closure && closure.start <= now) {
-    return { label: 'Closed', until: `until ${when(closure.end, now)}` }
-  }
-  if (!closure) return { label: 'Open', until: 'nothing scheduled' }
-  return { label: 'Open', until: `until ${when(closure.start, now)}` }
+  if (closure && closure.start <= now) return `Closed until ${when(closure.end, now)}`
+  if (!closure) return 'Open, nothing scheduled'
+  return `Open until ${when(closure.start, now)}`
 }
 
 /** Tailwind's red-600, orange-500 and green-600. */
@@ -36,4 +34,10 @@ export const STATUS_COLORS: Record<Status['kind'], string> = {
   closed: '#dc2626',
   today: '#f97316',
   open: '#16a34a',
+}
+
+export const STATUS_LABELS: Record<Status['kind'], string> = {
+  closed: 'Closed for the rest of today',
+  today: 'Opens or closes later today',
+  open: 'Open for the rest of today',
 }

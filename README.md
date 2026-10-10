@@ -8,6 +8,8 @@ Pick the areas you care about, e.g. Männiku LA1–LA5. The choice is kept in th
 - **orange**: opens or closes later today
 - **green**: open for the rest of today
 
+Click an area to see when it is open and closed, three days at a time or as a list.
+
 Data comes from the public [mil.ee training grounds page](https://mil.ee/kaitsevagi/harjutusvaljad/), which has no API. The server fetches it at most every 10 minutes and reads the area polygons (embedded JSON) and each ground's schedule table. mil.ee lists multi-day exercises as one row per day (… – 23:59, 00:00 – …); those are joined, so "opens" is when the area is actually free again. If mil.ee is unreachable the last schedule keeps being served and the page says so.
 
 ## Layout
@@ -16,7 +18,7 @@ Data comes from the public [mil.ee training grounds page](https://mil.ee/kaitsev
 server/main.ts       entry point
 server/serve.ts      Bun.serve: GET /api/grounds, /api/health, and the built web app
 server/mil-ee.ts     fetching and parsing the mil.ee page
-src/                 Vite + React web app (shadcn/ui on Base UI, react-leaflet)
+src/                 Vite + React web app (shadcn/ui on Base UI, react-leaflet, FullCalendar)
 src/lib/schedule.ts  closures and status; shared by server and browser
 src/lib/grounds.ts   the /api/grounds types; shared by server and browser
 test/                bun test, against a trimmed snapshot of the mil.ee page
