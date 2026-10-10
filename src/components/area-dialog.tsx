@@ -1,6 +1,7 @@
-import type { EventSourceFuncInfo } from '@fullcalendar/react'
+import type { EventSourceFuncInfo, SlotHeaderInfo } from '@fullcalendar/react'
 import etLocale from '@fullcalendar/react/locales/et'
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { cn } from 'cn'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { EventCalendar } from '@/components/event-calendar'
 import {
@@ -10,12 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { clock, describeStatus, endTime, STATUS_COLORS } from '@/lib/format'
+import { describeStatus, STATUS_COLORS } from '@/lib/format'
 import type { TrainingObject } from '@/lib/grounds'
 import {
   type Closure,
   type Status,
-  type Stretch,
+  cutoffsBetween,
   stretchesBetween,
   TIME_ZONE,
 } from '@/lib/schedule'
@@ -67,9 +68,8 @@ export function AreaDialog({ area, now, open, onOpenChange }: Props) {
 }
 
 function AreaCalendar({ closures }: { closures: Closure[] }) {
-  const { ref, hourHeight } = useHourHeight()
   // Blocks are drawn a day past either edge of the range, so the edges don't
-  // read as changes; labels use each stretch's real start and end.
+  // read as changes.
   const events = useCallback(
     async (range: EventSourceFuncInfo) => {
       const from = range.start.valueOf() - DAY
@@ -79,92 +79,116 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
         end: Math.min(s.end, to),
         title: s.closed ? closedTitle(s.closure) : 'Open',
         color: s.closed ? STATUS_COLORS.closed : STATUS_COLORS.open,
-        extendedProps: { stretch: s },
       }))
     },
     [closures],
   )
 
+  // The side shows 00:00, 24:00 and the times the area opens or closes in
+  // the days on screen, instead of every hour.
+  const [range, setRange] = useState<{ start: number; end: number }>()
+  const labels = useMemo(
+    () => axisLabels(range ? cutoffsBetween(closures, range.start, range.end) : []),
+    [closures, range],
+  )
+  const views = useMemo(
+    () => ({
+      timeGridThreeDay: { type: 'timeGrid', duration: { days: 3 } },
+      timeGrid: {
+        slotHeaderClass: 'relative self-stretch',
+        slotHeaderInnerClass: '',
+        slotHeaderContent: ({ time }: SlotHeaderInfo) => {
+          const from = (time?.milliseconds ?? 0) / 60_000
+          return (
+            <>
+              {/* Sizes the side's width and the rows' least height. */}
+              <span className="invisible block ps-3 pe-2 text-xs leading-none tabular-nums">
+                24:00
+              </span>
+              {labels
+                .filter(
+                  (m) => m >= from && (m < from + 60 || (m === DAY_MINUTES && from + 60 === m)),
+                )
+                .map((m) => (
+                  <span
+                    key={m}
+                    className={cn(
+                      'absolute end-2 text-xs leading-none text-muted-foreground tabular-nums',
+                      m === from
+                        ? ''
+                        : m === DAY_MINUTES
+                          ? '-translate-y-full'
+                          : '-translate-y-1/2',
+                    )}
+                    style={{ top: `${((m - from) / 60) * 100}%` }}
+                  >
+                    {formatMinutes(m)}
+                  </span>
+                ))}
+            </>
+          )
+        },
+        // The colour says open or closed and the side says when.
+        eventContent: () => null,
+      },
+    }),
+    [labels],
+  )
+
   return (
-    <div ref={ref}>
-      <EventCalendar
-        height="min(36rem, calc(100dvh - 10rem))"
-        borderless
-        availableViews={['timeGridThreeDay', 'listWeek']}
-        views={{
-          timeGridThreeDay: { type: 'timeGrid', duration: { days: 3 } },
-          timeGrid: {
-            tableBodyClass: 'area-calendar-body',
-            // No hour labels or titles, as the colour says open or closed:
-            // each block shows when it starts and ends.
-            slotHeaderInnerClass: 'invisible w-0 text-xs',
-            columnEventInnerClass: 'h-full px-2 py-0.5 text-xs',
-            eventContent: (info) => {
-              const stretch: Stretch = info.event.extendedProps.stretch
-              if (info.isStart && stretch.end === Infinity) {
-                return <div className="font-medium">from {clock(stretch.start)}</div>
-              }
-              if (info.isStart) {
-                // Wraps before the end time on narrow columns.
-                return (
-                  <div className="font-medium">
-                    {clock(stretch.start)} –{' '}
-                    <span className="whitespace-nowrap">{endTime(stretch.end, stretch.start)}</span>
-                  </div>
-                )
-              }
-              if (info.isEnd) {
-                return (
-                  <div className="font-medium">until {endTime(stretch.end, stretch.end - 1)}</div>
-                )
-              }
-              return null
-            },
-          },
-        }}
-        buttons={{ timeGridThreeDay: { text: '3 days' }, listWeek: { text: 'List' } }}
-        // Estonian dates and times, English words like the rest of the page.
-        locale={etLocale}
-        todayText="Today"
-        allDayText="All day"
-        todayHint="Today"
-        prevHint="Earlier"
-        nextHint="Later"
-        timeZone={TIME_ZONE}
-        events={events}
-        eventContrastColor="#fff"
-        eventTimeFormat={TIME_FORMAT}
-        allDaySlot={false}
-        slotDuration="01:00"
-        nowIndicator
-        noEventsText="Nothing scheduled"
-        slotMinHeight={hourHeight}
-        scrollTime="06:00"
-      />
-    </div>
+    <EventCalendar
+      height="min(36rem, calc(100dvh - 10rem))"
+      borderless
+      availableViews={['timeGridThreeDay', 'listWeek']}
+      views={views}
+      buttons={{ timeGridThreeDay: { text: '3 days' }, listWeek: { text: 'List' } }}
+      // Estonian dates and times, English words like the rest of the page.
+      locale={etLocale}
+      todayText="Today"
+      allDayText="All day"
+      todayHint="Today"
+      prevHint="Earlier"
+      nextHint="Later"
+      timeZone={TIME_ZONE}
+      events={events}
+      eventContrastColor="#fff"
+      eventTimeFormat={TIME_FORMAT}
+      allDaySlot={false}
+      slotDuration="01:00"
+      // The whole day fills the view, without scrolling.
+      expandRows
+      nowIndicator
+      noEventsText="Nothing scheduled"
+      datesSet={(info) =>
+        setRange((r) =>
+          r?.start === info.start.valueOf() && r.end === info.end.valueOf()
+            ? r
+            : { start: info.start.valueOf(), end: info.end.valueOf() },
+        )
+      }
+    />
   )
 }
 
-/**
- * Hour rows an 18th of the time grid's height, so 06:00–24:00 fill the view
- * and the night is a scroll up.
- */
-function useHourHeight() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [hourHeight, setHourHeight] = useState<number>()
-  useLayoutEffect(() => {
-    const wrapper = ref.current
-    if (!wrapper) return
-    const measure = () => {
-      const body = wrapper.querySelector('.area-calendar-body')
-      if (body) setHourHeight(Math.floor(body.clientHeight / 18))
-    }
-    const observer = new ResizeObserver(measure)
-    observer.observe(wrapper)
-    measure()
-    return () => observer.disconnect()
-  }, [])
-  return { ref, hourHeight }
+const DAY_MINUTES = 24 * 60
+/** Axis labels this many minutes apart or closer would overlap. */
+const MIN_GAP = 50
+
+/** Minutes of the day to label: the cutoffs that fit, framed by 00:00 and 24:00. */
+function axisLabels(cutoffs: { hour: number; minute: number }[]) {
+  const shown: number[] = []
+  for (const m of cutoffs.map((c) => c.hour * 60 + c.minute)) {
+    if (!shown.length || m - shown.at(-1)! >= MIN_GAP) shown.push(m)
+  }
+  if ((shown[0] ?? DAY_MINUTES) >= MIN_GAP) shown.unshift(0)
+  if (DAY_MINUTES - shown.at(-1)! >= MIN_GAP) shown.push(DAY_MINUTES)
+  return shown
+}
+
+/** 750 → "12:30", 1440 → "24:00" */
+function formatMinutes(m: number) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`
 }
 
 /** "Closed: shooting, tactics" */

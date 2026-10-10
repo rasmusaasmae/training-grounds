@@ -91,6 +91,22 @@ export function stretchesBetween(closures: Closure[], from: number, to: number):
   return stretches
 }
 
+/**
+ * The times of day (Tallinn) an object opens or closes within `from`–`to`,
+ * once each and in order. Midnight is left out, as every day starts there.
+ */
+export function cutoffsBetween(closures: Closure[], from: number, to: number) {
+  const minutes = new Set<number>()
+  for (const t of closures.flatMap((c) => [c.start, c.end])) {
+    if (t < from || t >= to) continue
+    const { hour, minute } = tallinnWallClock(t)
+    if (hour || minute) minutes.add(hour * 60 + minute)
+  }
+  return [...minutes]
+    .toSorted((a, b) => a - b)
+    .map((m) => ({ hour: Math.floor(m / 60), minute: m % 60 }))
+}
+
 const tallinnParts = new Intl.DateTimeFormat('en-US', {
   timeZone: TIME_ZONE,
   hourCycle: 'h23',
