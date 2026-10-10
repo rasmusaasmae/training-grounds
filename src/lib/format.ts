@@ -21,17 +21,6 @@ export function when(t: number, now: number) {
   return `${dateFormat.format(t)} ${clock(t)}`
 }
 
-/**
- * The end of a stretch as seen from the day `from` falls on: "20:00", "24:00"
- * at midnight, or "L, 10.10 07:00" on a later day.
- */
-export function endTime(end: number, from: number) {
-  const last = end - 1 // A stretch ending at midnight ends on the day before.
-  const time = tallinnMidnight(end) === end ? '24:00' : clock(end)
-  if (tallinnMidnight(last) === tallinnMidnight(from)) return time
-  return `${dateFormat.format(last)} ${time}`
-}
-
 /** "Closed until 17:00", "Open until E, 12.10 08:00" or "Open, nothing scheduled". */
 export function describeStatus(status: Status, now: number) {
   const { closure } = status

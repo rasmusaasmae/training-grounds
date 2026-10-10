@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   closuresFor,
+  cutoffsBetween,
   type Exercise,
   statusAt,
   stretchesBetween,
@@ -101,6 +102,21 @@ describe('stretchesBetween', () => {
     const to = at('2026-10-23T00:00+03:00')
     expect(stretchesBetween(closuresFor('LA1', exercises), from, to)).toEqual([
       { closed: false, start: at('2026-10-14T17:00+03:00'), end: Infinity },
+    ])
+  })
+})
+
+describe('cutoffsBetween', () => {
+  test('lists the times of day an area opens or closes in the range, once each', () => {
+    const cutoffs = cutoffsBetween(
+      closuresFor('LA3', exercises),
+      at('2026-10-10T00:00+03:00'),
+      at('2026-10-13T00:00+03:00'),
+    )
+    expect(cutoffs).toEqual([
+      { hour: 8, minute: 0 },
+      { hour: 17, minute: 0 },
+      { hour: 23, minute: 30 },
     ])
   })
 })
