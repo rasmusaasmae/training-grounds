@@ -1,6 +1,7 @@
 import type { EventSourceFuncInfo } from '@fullcalendar/react'
 import etLocale from '@fullcalendar/react/locales/et'
-import { useCallback, useRef } from 'react'
+import { cn } from 'cn'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 
 import { EventCalendar } from '@/components/event-calendar'
 import {
@@ -12,13 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { describeStatus, STATUS_COLORS } from '@/lib/format'
 import type { TrainingObject } from '@/lib/grounds'
-import {
-  type Closure,
-  type Status,
-  stretchesBetween,
-  TIME_ZONE,
-  tallinnWallClock,
-} from '@/lib/schedule'
+import { type Closure, type Status, stretchesBetween, TIME_ZONE } from '@/lib/schedule'
 
 export type AreaDetails = {
   object: TrainingObject
@@ -57,7 +52,7 @@ export function AreaDialog({ area, now, open, onOpenChange }: Props) {
                 {area.object.name}: {describeStatus(area.status, now).toLowerCase()}
               </DialogDescription>
             </DialogHeader>
-            <AreaCalendar closures={area.closures} now={now} />
+            <AreaCalendar closures={area.closures} />
           </>
         )}
       </DialogContent>
@@ -65,7 +60,8 @@ export function AreaDialog({ area, now, open, onOpenChange }: Props) {
   )
 }
 
-function AreaCalendar({ closures, now }: { closures: Closure[]; now: number }) {
+function AreaCalendar({ closures }: { closures: Closure[] }) {
+  const hourHeight = useHourHeight()
   // Open stretches fill whatever range the calendar shows.
   const events = useCallback(
     async (range: EventSourceFuncInfo) =>
@@ -79,31 +75,64 @@ function AreaCalendar({ closures, now }: { closures: Closure[]; now: number }) {
   )
 
   return (
-    <EventCalendar
-      height="min(36rem, calc(100dvh - 10rem))"
-      borderless
-      availableViews={['timeGridThreeDay', 'listWeek']}
-      views={{ timeGridThreeDay: { type: 'timeGrid', duration: { days: 3 } } }}
-      buttons={{ timeGridThreeDay: { text: '3 days' }, listWeek: { text: 'List' } }}
-      // Estonian dates and times, English words like the rest of the page.
-      locale={etLocale}
-      todayText="Today"
-      allDayText="All day"
-      todayHint="Today"
-      prevHint="Earlier"
-      nextHint="Later"
-      timeZone={TIME_ZONE}
-      events={events}
-      eventContrastColor="#fff"
-      eventTimeFormat={TIME_FORMAT}
-      slotHeaderFormat={TIME_FORMAT}
-      allDaySlot={false}
-      nowIndicator
-      noEventsText="Nothing scheduled"
-      // Open with the current time in view, a little below the top.
-      scrollTime={`${Math.max(tallinnWallClock(now).hour - 2, 0)}:00`}
-    />
+    <div ref={hourHeight.ref}>
+      <EventCalendar
+        height="min(36rem, calc(100dvh - 10rem))"
+        borderless
+        availableViews={['timeGridThreeDay', 'listWeek']}
+        views={{
+          timeGridThreeDay: { type: 'timeGrid', duration: { days: 3 } },
+          timeGrid: {
+            tableBodyClass: 'area-calendar-body',
+            // Smaller labels than the theme's, so rows can be short.
+            slotHeaderInnerClass: (info) =>
+              cn('relative -top-2 ms-2 me-3 text-xs', info.isFirst && 'hidden'),
+          },
+        }}
+        buttons={{ timeGridThreeDay: { text: '3 days' }, listWeek: { text: 'List' } }}
+        // Estonian dates and times, English words like the rest of the page.
+        locale={etLocale}
+        todayText="Today"
+        allDayText="All day"
+        todayHint="Today"
+        prevHint="Earlier"
+        nextHint="Later"
+        timeZone={TIME_ZONE}
+        events={events}
+        eventContrastColor="#fff"
+        eventTimeFormat={TIME_FORMAT}
+        slotHeaderFormat={TIME_FORMAT}
+        allDaySlot={false}
+        slotDuration="01:00"
+        nowIndicator
+        noEventsText="Nothing scheduled"
+        slotMinHeight={hourHeight.px}
+        scrollTime="06:00"
+      />
+    </div>
   )
+}
+
+/**
+ * Hour rows an 18th of the time grid's height, so 06:00–24:00 fill the view
+ * and the night is a scroll up.
+ */
+function useHourHeight() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [px, setPx] = useState<number>()
+  useLayoutEffect(() => {
+    const wrapper = ref.current
+    if (!wrapper) return
+    const measure = () => {
+      const body = wrapper.querySelector('.area-calendar-body')
+      if (body) setPx(Math.floor(body.clientHeight / 18))
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(wrapper)
+    measure()
+    return () => observer.disconnect()
+  }, [])
+  return { ref, px }
 }
 
 /** "Closed: shooting, tactics" */
