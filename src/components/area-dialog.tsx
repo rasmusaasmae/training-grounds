@@ -114,11 +114,8 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
                     key={m}
                     className={cn(
                       'absolute end-2 text-xs leading-none text-muted-foreground tabular-nums',
-                      m === from
-                        ? ''
-                        : m === DAY_MINUTES
-                          ? '-translate-y-full'
-                          : '-translate-y-1/2',
+                      // Centred on their line; the day's edges would be cut off.
+                      m === 0 ? '' : m === DAY_MINUTES ? '-translate-y-full' : '-translate-y-1/2',
                     )}
                     style={{ top: `${((m - from) / 60) * 100}%` }}
                   >
