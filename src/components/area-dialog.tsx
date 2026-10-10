@@ -61,7 +61,7 @@ export function AreaDialog({ area, now, open, onOpenChange }: Props) {
 }
 
 function AreaCalendar({ closures }: { closures: Closure[] }) {
-  const hourHeight = useHourHeight()
+  const { ref, hourHeight } = useHourHeight()
   // Open stretches fill whatever range the calendar shows.
   const events = useCallback(
     async (range: EventSourceFuncInfo) =>
@@ -75,7 +75,7 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
   )
 
   return (
-    <div ref={hourHeight.ref}>
+    <div ref={ref}>
       <EventCalendar
         height="min(36rem, calc(100dvh - 10rem))"
         borderless
@@ -106,7 +106,7 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
         slotDuration="01:00"
         nowIndicator
         noEventsText="Nothing scheduled"
-        slotMinHeight={hourHeight.px}
+        slotMinHeight={hourHeight}
         scrollTime="06:00"
       />
     </div>
@@ -119,20 +119,20 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
  */
 function useHourHeight() {
   const ref = useRef<HTMLDivElement>(null)
-  const [px, setPx] = useState<number>()
+  const [hourHeight, setHourHeight] = useState<number>()
   useLayoutEffect(() => {
     const wrapper = ref.current
     if (!wrapper) return
     const measure = () => {
       const body = wrapper.querySelector('.area-calendar-body')
-      if (body) setPx(Math.floor(body.clientHeight / 18))
+      if (body) setHourHeight(Math.floor(body.clientHeight / 18))
     }
     const observer = new ResizeObserver(measure)
     observer.observe(wrapper)
     measure()
     return () => observer.disconnect()
   }, [])
-  return { ref, px }
+  return { ref, hourHeight }
 }
 
 /** "Closed: shooting, tactics" */
