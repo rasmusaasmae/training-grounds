@@ -40,13 +40,19 @@ describe('closuresFor', () => {
 describe('statusAt', () => {
   const la1 = closuresFor('LA1', exercises)
 
-  test('is closed during an exercise, until the whole closure ends', () => {
+  test('is closed while the closure runs past midnight', () => {
     const status = statusAt(la1, at('2026-10-10T23:00+03:00'))
     expect(status.kind).toBe('closed')
     expect(status.closure?.end).toBe(at('2026-10-11T17:00+03:00'))
   })
 
-  test('is closed today when a closure starts before midnight', () => {
+  test('changes today when the closure ends before midnight', () => {
+    const status = statusAt(la1, at('2026-10-11T12:00+03:00'))
+    expect(status.kind).toBe('today')
+    expect(status.closure?.end).toBe(at('2026-10-11T17:00+03:00'))
+  })
+
+  test('changes today when a closure starts before midnight', () => {
     const status = statusAt(la1, at('2026-10-12T05:30+03:00'))
     expect(status.kind).toBe('today')
     expect(status.closure?.start).toBe(at('2026-10-12T08:00+03:00'))

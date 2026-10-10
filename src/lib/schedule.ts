@@ -28,10 +28,11 @@ export type Closure = {
   exercises: Exercise[]
 }
 
+/** An object's state for the rest of the day (until midnight in Tallinn). */
 export type Status =
-  /** An exercise is on: going there is forbidden until `closure.end`. */
+  /** Closed for the rest of the day; `closure` is the one on now. */
   | { kind: 'closed'; closure: Closure }
-  /** Open now, but `closure` starts before midnight (Tallinn). */
+  /** Opens or closes before midnight; `closure` is the one on now, or the next. */
   | { kind: 'today'; closure: Closure }
   /** Open for the rest of the day; `closure` is the next one, if any. */
   | { kind: 'open'; closure: Closure | undefined }
@@ -59,10 +60,11 @@ export function closuresFor(code: string, exercises: Exercise[]): Closure[] {
 }
 
 export function statusAt(closures: Closure[], now: number): Status {
+  const midnight = tallinnMidnight(now, 1)
   const current = closures.find((c) => c.start <= now && now < c.end)
-  if (current) return { kind: 'closed', closure: current }
+  if (current) return { kind: current.end < midnight ? 'today' : 'closed', closure: current }
   const next = closures.find((c) => c.start > now)
-  if (next && next.start < tallinnMidnight(now, 1)) return { kind: 'today', closure: next }
+  if (next && next.start < midnight) return { kind: 'today', closure: next }
   return { kind: 'open', closure: next }
 }
 

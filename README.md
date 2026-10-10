@@ -4,8 +4,8 @@ A map of which Estonian Defence Forces training grounds (harjutusväljad) are cl
 
 Pick the areas you care about, e.g. Männiku LA1–LA5. The choice is kept in the page address (`/?objects=manniku-LA1,manniku-LA2`), so bookmark it. Each area is coloured on an aerial map:
 
-- **red**: closed now; going there is forbidden
-- **orange**: open now, but a closure starts later today
+- **red**: closed for the rest of today; going there is forbidden
+- **orange**: opens or closes later today
 - **green**: open for the rest of today
 
 Data comes from the public [mil.ee training grounds page](https://mil.ee/kaitsevagi/harjutusvaljad/), which has no API. The server fetches it at most every 10 minutes and reads the area polygons (embedded JSON) and each ground's schedule table. mil.ee lists multi-day exercises as one row per day (… – 23:59, 00:00 – …); those are joined, so "opens" is when the area is actually free again. If mil.ee is unreachable the last schedule keeps being served and the page says so.
