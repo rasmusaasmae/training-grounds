@@ -1,6 +1,5 @@
 import type { EventSourceFuncInfo } from '@fullcalendar/react'
 import etLocale from '@fullcalendar/react/locales/et'
-import { cn } from 'cn'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 
 import { EventCalendar } from '@/components/event-calendar'
@@ -11,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { describeStatus, STATUS_COLORS } from '@/lib/format'
+import { clock, describeStatus, STATUS_COLORS } from '@/lib/format'
 import type { TrainingObject } from '@/lib/grounds'
 import { type Closure, type Status, stretchesBetween, TIME_ZONE } from '@/lib/schedule'
 
@@ -30,6 +29,7 @@ type Props = {
 }
 
 const TIME_FORMAT = { hour: '2-digit', minute: '2-digit' } as const
+const DAY = 86_400_000
 
 /** An area's status and a calendar of when it is open and closed, three days at a time. */
 export function AreaDialog({ area, now, open, onOpenChange }: Props) {
@@ -62,15 +62,18 @@ export function AreaDialog({ area, now, open, onOpenChange }: Props) {
 
 function AreaCalendar({ closures }: { closures: Closure[] }) {
   const { ref, hourHeight } = useHourHeight()
-  // Open stretches fill whatever range the calendar shows.
+  // Open stretches fill whatever range the calendar shows, and a day either
+  // side, so the edges of the range don't read as changes.
   const events = useCallback(
     async (range: EventSourceFuncInfo) =>
-      stretchesBetween(closures, range.start.valueOf(), range.end.valueOf()).map((s) => ({
-        start: s.start,
-        end: s.end,
-        title: s.closed ? closedTitle(s.closure) : 'Open',
-        color: s.closed ? STATUS_COLORS.closed : STATUS_COLORS.open,
-      })),
+      stretchesBetween(closures, range.start.valueOf() - DAY, range.end.valueOf() + DAY).map(
+        (s) => ({
+          start: s.start,
+          end: s.end,
+          title: s.closed ? closedTitle(s.closure) : 'Open',
+          color: s.closed ? STATUS_COLORS.closed : STATUS_COLORS.open,
+        }),
+      ),
     [closures],
   )
 
@@ -84,9 +87,16 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
           timeGridThreeDay: { type: 'timeGrid', duration: { days: 3 } },
           timeGrid: {
             tableBodyClass: 'area-calendar-body',
-            // Smaller labels than the theme's, so rows can be short.
-            slotHeaderInnerClass: (info) =>
-              cn('relative -top-2 ms-2 me-3 text-xs', info.isFirst && 'hidden'),
+            // No hour labels: each block shows when it starts, which is when
+            // the one before it ends. The title stays in view while scrolling.
+            slotHeaderInnerClass: 'invisible w-0 text-xs',
+            columnEventInnerClass: 'h-full px-2 py-1 text-xs',
+            eventContent: (info) => (
+              <div className="sticky top-1 truncate">
+                <span className="font-medium">{info.event.title}</span>
+                {info.isStart && info.event.start && ` · ${clock(info.event.start.valueOf())}`}
+              </div>
+            ),
           },
         }}
         buttons={{ timeGridThreeDay: { text: '3 days' }, listWeek: { text: 'List' } }}
@@ -101,7 +111,6 @@ function AreaCalendar({ closures }: { closures: Closure[] }) {
         events={events}
         eventContrastColor="#fff"
         eventTimeFormat={TIME_FORMAT}
-        slotHeaderFormat={TIME_FORMAT}
         allDaySlot={false}
         slotDuration="01:00"
         nowIndicator
