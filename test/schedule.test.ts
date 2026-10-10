@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
-import { closuresFor, type Exercise, statusAt, tallinnTime } from '../src/lib/schedule'
+import {
+  closuresFor,
+  type Exercise,
+  statusAt,
+  stretchesBetween,
+  tallinnTime,
+} from '../src/lib/schedule'
 
 const at = (iso: string) => Date.parse(iso)
 
@@ -40,13 +46,19 @@ describe('closuresFor', () => {
 describe('statusAt', () => {
   const la1 = closuresFor('LA1', exercises)
 
-  test('is closed during an exercise, until the whole closure ends', () => {
+  test('is closed while the closure runs past midnight', () => {
     const status = statusAt(la1, at('2026-10-10T23:00+03:00'))
     expect(status.kind).toBe('closed')
     expect(status.closure?.end).toBe(at('2026-10-11T17:00+03:00'))
   })
 
-  test('is closed today when a closure starts before midnight', () => {
+  test('changes today when the closure ends before midnight', () => {
+    const status = statusAt(la1, at('2026-10-11T12:00+03:00'))
+    expect(status.kind).toBe('today')
+    expect(status.closure?.end).toBe(at('2026-10-11T17:00+03:00'))
+  })
+
+  test('changes today when a closure starts before midnight', () => {
     const status = statusAt(la1, at('2026-10-12T05:30+03:00'))
     expect(status.kind).toBe('today')
     expect(status.closure?.start).toBe(at('2026-10-12T08:00+03:00'))
@@ -67,6 +79,29 @@ describe('statusAt', () => {
       kind: 'open',
       closure: undefined,
     })
+  })
+})
+
+describe('stretchesBetween', () => {
+  test('fills the gaps between closures with open stretches, keeping closures whole', () => {
+    const stretches = stretchesBetween(
+      closuresFor('LA1', exercises),
+      at('2026-10-11T00:00+03:00'),
+      at('2026-10-13T00:00+03:00'),
+    )
+    expect(stretches.map((s) => [s.closed, s.start, s.end])).toEqual([
+      [true, at('2026-10-10T08:00+03:00'), at('2026-10-11T17:00+03:00')],
+      [false, at('2026-10-11T17:00+03:00'), at('2026-10-12T08:00+03:00')],
+      [true, at('2026-10-12T08:00+03:00'), at('2026-10-14T17:00+03:00')],
+    ])
+  })
+
+  test('is one open stretch when nothing is scheduled', () => {
+    const from = at('2026-10-20T00:00+03:00')
+    const to = at('2026-10-23T00:00+03:00')
+    expect(stretchesBetween(closuresFor('LA1', exercises), from, to)).toEqual([
+      { closed: false, start: from, end: to },
+    ])
   })
 })
 

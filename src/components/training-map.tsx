@@ -1,11 +1,9 @@
 import 'leaflet/dist/leaflet.css'
 import { latLngBounds, type LatLngBoundsExpression, type LatLngTuple } from 'leaflet'
 import { useEffect, useRef } from 'react'
-import { MapContainer, Polygon, TileLayer, Tooltip, useMap, ZoomControl } from 'react-leaflet'
+import { MapContainer, Polygon, TileLayer, useMap, ZoomControl } from 'react-leaflet'
 
-import { Badge } from '@/components/ui/badge'
-import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { describeStatus, STATUS_COLORS } from '@/lib/format'
+import { STATUS_COLORS } from '@/lib/format'
 import type { MultiPolygon, TrainingGround, TrainingObject } from '@/lib/grounds'
 import type { Status } from '@/lib/schedule'
 
@@ -18,8 +16,6 @@ const ESTONIA: LatLngBoundsExpression = [
 const TILES = 'https://tiles.maaamet.ee/tm/tms/1.0.0'
 const ATTRIBUTION = '&copy; <a href="https://maaruum.ee">Maa- ja Ruumiamet</a>'
 
-const BADGE_VARIANTS = { closed: 'destructive', today: 'outline', open: 'secondary' } as const
-
 export type MapItem = { object: TrainingObject; status: Status }
 
 /** Changing `key` moves the map to fit `objects` (or all of Estonia). */
@@ -28,11 +24,12 @@ export type MapView = { key: string; objects: TrainingObject[] }
 type Props = {
   grounds: TrainingGround[]
   items: MapItem[]
-  now: number
   view: MapView
+  /** Called with an object's id when its shape is clicked. */
+  onSelect: (id: string) => void
 }
 
-export function TrainingMap({ grounds, items, now, view }: Props) {
+export function TrainingMap({ grounds, items, view, onSelect }: Props) {
   return (
     <MapContainer
       bounds={ESTONIA}
@@ -55,39 +52,19 @@ export function TrainingMap({ grounds, items, now, view }: Props) {
           ground.boundary && <GroundOutline key={ground.slug} boundary={ground.boundary} />,
       )}
 
-      {items.map(({ object, status }) => {
-        const { label, until } = describeStatus(status, now)
-        return (
-          <Polygon
-            key={object.id}
-            positions={toLatLngs(object.geometry)}
-            pathOptions={{
-              color: STATUS_COLORS[status.kind],
-              fillColor: STATUS_COLORS[status.kind],
-              fillOpacity: 0.35,
-              weight: 2,
-            }}
-          >
-            {/* Strip Leaflet's own tooltip box so the card is the label. */}
-            <Tooltip
-              permanent
-              direction="center"
-              className="border-0! bg-transparent! p-0! shadow-none!"
-            >
-              {/* CardHeader is a size container, so the card needs a width of its own. */}
-              <Card size="sm" className="w-44">
-                <CardHeader>
-                  <CardTitle>{object.code}</CardTitle>
-                  <CardDescription>{until}</CardDescription>
-                  <CardAction>
-                    <Badge variant={BADGE_VARIANTS[status.kind]}>{label}</Badge>
-                  </CardAction>
-                </CardHeader>
-              </Card>
-            </Tooltip>
-          </Polygon>
-        )
-      })}
+      {items.map(({ object, status }) => (
+        <Polygon
+          key={object.id}
+          positions={toLatLngs(object.geometry)}
+          pathOptions={{
+            color: STATUS_COLORS[status.kind],
+            fillColor: STATUS_COLORS[status.kind],
+            fillOpacity: 0.35,
+            weight: 2,
+          }}
+          eventHandlers={{ click: () => onSelect(object.id) }}
+        />
+      ))}
 
       <FollowView view={view} />
     </MapContainer>
