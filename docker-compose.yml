@@ -1,0 +1,27 @@
+name: training-grounds
+
+services:
+  app:
+    image: ghcr.io/rasmusaasmae/training-grounds:latest
+    container_name: training-grounds
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Tallinn
+    networks:
+      - hermes
+    labels:
+      com.centurylinklabs.watchtower.enable: 'true'
+      net.unraid.docker.webui: 'https://training-grounds.aasmae.com'
+    healthcheck:
+      test:
+        - CMD
+        - bun
+        - -e
+        - "const r = await fetch('http://127.0.0.1:3000/api/health'); process.exit(r.ok ? 0 : 1)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  hermes:
+    external: true

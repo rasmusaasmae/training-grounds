@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [".agents/**", "test/fixtures/**"],
+  "semi": false,
+  "singleQuote": true,
+  "sortImports": true,
+  "sortTailwindcss": {
+    "stylesheet": "./src/index.css",
+    "functions": ["cn", "cva"]
+  }
+}
