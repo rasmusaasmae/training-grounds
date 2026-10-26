@@ -12,6 +12,7 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: 'true'
       net.unraid.docker.webui: 'https://training-grounds.aasmae.com'
+      net.unraid.docker.icon: 'https://training-grounds.aasmae.com/icon.png'
     healthcheck:
       test:
         - CMD
